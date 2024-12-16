@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,41 +14,73 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("Please provide at least one directory to monitor")
-	}
+	paths := parseArgs()
 
-	paths := os.Args[1:]
-
-	validDirs := filterValidDirs(paths)
-
-	if len(validDirs) == 0 {
+	dirsToMonitor := prepareDirsForMonitoring(paths)
+	if len(dirsToMonitor) == 0 {
 		log.Fatal("No valid directories provided to monitor")
 	}
 
-	dirs, err := directories.GetAllDirs(validDirs)
+	stopChan := make(chan struct{})
+	var wg sync.WaitGroup
+
+	log.Info("Starting monitoring directories")
+	monitor.Init(dirsToMonitor, stopChan, &wg)
+
+	waitForShutdown(stopChan, &wg)
+
+	log.Info("Shutting down gracefully")
+}
+
+/*
+	parseArgs returns the list of directories to monitor.
+
+If no directories are provided, it logs an error and exits.
+*/
+func parseArgs() []string {
+	if len(os.Args) < 2 {
+		log.Fatal("Please provide at least one directory to monitor")
+	}
+	return os.Args[1:]
+}
+
+/*
+	prepareDirsForMonitoring prepares the list of directories for monitoring.
+
+It filters out invalid directories and returns a list of all recursive directories.
+*/
+func prepareDirsForMonitoring(paths []string) []string {
+	validDirs := filterValidDirs(paths)
+
+	allRecursiveDirs, err := directories.GetAllDirs(validDirs)
 	if err != nil {
 		log.Fatalf("Failed to get directories: %v", err)
 	}
+	return allRecursiveDirs
+}
 
-	stopChan := make(chan struct{})
+/*
+	waitForShutdown blocks until a system signal is received.
 
-	var wg sync.WaitGroup
-
-	monitor.Init(dirs, stopChan, &wg)
-
+It then closes the stopChan and waits for all goroutines to stop.
+*/
+func waitForShutdown(stopChan chan struct{}, wg *sync.WaitGroup) {
+	// Канал для получения системных сигналов
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	<-sigChan
+	<-sigChan // Блокируем выполнение до получения сигнала
 	close(stopChan)
 
-	fmt.Println("Waiting for goroutines to finish...")
+	log.Info("Waiting for all goroutines to stop")
 	wg.Wait()
-
-	fmt.Println("Shutting down gracefully")
 }
 
+/*
+	filterValidDirs filters out invalid directories from the list of paths.
+
+It returns a list of valid directories.
+*/
 func filterValidDirs(paths []string) []string {
 	validDirs := []string{}
 	for _, dir := range paths {
@@ -61,7 +92,7 @@ func filterValidDirs(paths []string) []string {
 		if stat, err := os.Stat(absPath); err == nil && stat.IsDir() {
 			validDirs = append(validDirs, absPath)
 		} else {
-			log.Warnf("Skipping invalid or non-existent directory or not a dir: %s", dir)
+			log.Warnf("Skipping invalid or non-existent directory: %s", dir)
 		}
 	}
 	return validDirs
