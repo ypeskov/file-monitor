@@ -3,8 +3,10 @@ package main
 import (
 	"sync"
 	"ypeskov/file-monitor/internal/config"
+	"ypeskov/file-monitor/internal/directories"
 	"ypeskov/file-monitor/internal/monitor"
 	"ypeskov/file-monitor/internal/server"
+	"ypeskov/file-monitor/internal/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -18,8 +20,9 @@ func main() {
 	})
 	log.Info("Starting server on port ", cfg.Port)
 
-	paths := []string{"./"}
-	dirsToMonitor := map[string]struct{}{paths[0]: {}}
+	paths := utils.ParseArgs()
+
+	dirsToMonitor := directories.PrepareDirsForMonitoring(paths)
 
 	stopChan := make(chan struct{})
 
