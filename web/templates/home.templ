@@ -1,0 +1,51 @@
+package templates
+
+templ HomePage() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<title>File Monitor</title>
+			<link rel="icon" href="/public/assets/images/favicon.ico" type="image/x-icon"/>
+			<link href="/public/assets/css/output.css" rel="stylesheet"/>
+			<script>
+				document.addEventListener("DOMContentLoaded", () => {
+					const socket = new WebSocket("ws://" + window.location.host + "/ws");
+					const logContainer = document.getElementById("event-log");
+
+					socket.onopen = () => {
+						console.log("WebSocket connection established");
+					};
+
+					socket.onmessage = (event) => {
+						const data = JSON.parse(event.data);
+						const logEntry = document.createElement("div");
+						logEntry.className = "p-2 bg-green-100 rounded shadow mb-2";
+						logEntry.innerText = `Event: ${data.event}, Path: ${data.path}`;
+						logContainer.prepend(logEntry);
+					};
+
+					socket.onclose = () => {
+						console.log("WebSocket connection closed");
+					};
+
+					socket.onerror = (error) => {
+						console.error("WebSocket error:", error);
+					};
+				});
+			</script>
+		</head>
+		<body hx-boost="true" class="h-screen flex flex-col">
+			<main class="flex-grow">
+				<div id="main-content" class="h-full space-y-4 p-6 bg-slate-300 shadow-md rounded-md">
+					<div class="flex justify-between items-center">
+						<h1 class="text-2xl font-bold text-slate-900">File Monitor</h1>
+					</div>
+					<div id="event-log" class="space-y-2 p-4 bg-white rounded shadow-md h-80 overflow-y-auto">
+						<p class="text-gray-500">Waiting for events...</p>
+					</div>
+				</div>
+			</main>
+		</body>
+	</html>
+}

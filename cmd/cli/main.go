@@ -10,39 +10,26 @@ import (
 
 	"ypeskov/file-monitor/internal/directories"
 	"ypeskov/file-monitor/internal/monitor"
+	"ypeskov/file-monitor/internal/utils"
 )
 
 func main() {
 	log.SetLevel(log.DebugLevel)
 
-	paths := parseArgs()
+	paths := utils.ParseArgs()
 
 	dirsToMonitor := directories.PrepareDirsForMonitoring(paths)
-	if len(dirsToMonitor) == 0 {
-		log.Fatal("No valid directories provided to monitor")
-	}
 
 	stopChan := make(chan struct{})
 	var wg sync.WaitGroup
 
+	handler := &monitor.LogHandler{}
 	log.Info("Starting monitoring directories")
-	monitor.Init(dirsToMonitor, stopChan, &wg)
+	monitor.Init(dirsToMonitor, stopChan, &wg, handler)
 
 	waitForShutdown(stopChan, &wg)
 
 	log.Info("The End")
-}
-
-/*
-	parseArgs returns the list of directories to monitor.
-
-If no directories are provided, it logs an error and exits.
-*/
-func parseArgs() []string {
-	if len(os.Args) < 2 {
-		log.Fatal("Please provide at least one directory to monitor")
-	}
-	return os.Args[1:]
 }
 
 /*
