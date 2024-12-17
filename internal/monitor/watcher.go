@@ -8,7 +8,7 @@ import (
 )
 
 func Init(dirs map[string]struct{}, stopChan <-chan struct{}, wg *sync.WaitGroup) {
-	for dir, _ := range dirs {
+	for dir := range dirs {
 		wg.Add(1)
 		go func(directory string) {
 			defer wg.Done()
