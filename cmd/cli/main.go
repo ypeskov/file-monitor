@@ -25,8 +25,9 @@ func main() {
 	stopChan := make(chan struct{})
 	var wg sync.WaitGroup
 
+	handler := &monitor.LogHandler{}
 	log.Info("Starting monitoring directories")
-	monitor.Init(dirsToMonitor, stopChan, &wg)
+	monitor.Init(dirsToMonitor, stopChan, &wg, handler)
 
 	waitForShutdown(stopChan, &wg)
 
