@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.DebugLevel)
+
 	paths := parseArgs()
 
 	dirsToMonitor := directories.PrepareDirsForMonitoring(paths)
