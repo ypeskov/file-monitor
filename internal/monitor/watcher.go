@@ -7,8 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Init(dirs []string, stopChan <-chan struct{}, wg *sync.WaitGroup) {
-	for _, dir := range dirs {
+func Init(dirs map[string]struct{}, stopChan <-chan struct{}, wg *sync.WaitGroup) {
+	for dir, _ := range dirs {
 		wg.Add(1)
 		go func(directory string) {
 			defer wg.Done()

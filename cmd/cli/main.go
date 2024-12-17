@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -16,7 +15,7 @@ import (
 func main() {
 	paths := parseArgs()
 
-	dirsToMonitor := prepareDirsForMonitoring(paths)
+	dirsToMonitor := directories.PrepareDirsForMonitoring(paths)
 	if len(dirsToMonitor) == 0 {
 		log.Fatal("No valid directories provided to monitor")
 	}
@@ -29,7 +28,7 @@ func main() {
 
 	waitForShutdown(stopChan, &wg)
 
-	log.Info("Shutting down gracefully")
+	log.Info("The End")
 }
 
 /*
@@ -45,55 +44,17 @@ func parseArgs() []string {
 }
 
 /*
-	prepareDirsForMonitoring prepares the list of directories for monitoring.
-
-It filters out invalid directories and returns a list of all recursive directories.
-*/
-func prepareDirsForMonitoring(paths []string) []string {
-	validDirs := filterValidDirs(paths)
-
-	allRecursiveDirs, err := directories.GetAllDirs(validDirs)
-	if err != nil {
-		log.Fatalf("Failed to get directories: %v", err)
-	}
-	return allRecursiveDirs
-}
-
-/*
 	waitForShutdown blocks until a system signal is received.
 
 It then closes the stopChan and waits for all goroutines to stop.
 */
 func waitForShutdown(stopChan chan struct{}, wg *sync.WaitGroup) {
-	// Канал для получения системных сигналов
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	<-sigChan // Блокируем выполнение до получения сигнала
+	<-sigChan
 	close(stopChan)
 
 	log.Info("Waiting for all goroutines to stop")
 	wg.Wait()
-}
-
-/*
-	filterValidDirs filters out invalid directories from the list of paths.
-
-It returns a list of valid directories.
-*/
-func filterValidDirs(paths []string) []string {
-	validDirs := []string{}
-	for _, dir := range paths {
-		absPath, err := filepath.Abs(dir)
-		if err != nil {
-			log.Errorf("Invalid path %s: %v", dir, err)
-			continue
-		}
-		if stat, err := os.Stat(absPath); err == nil && stat.IsDir() {
-			validDirs = append(validDirs, absPath)
-		} else {
-			log.Warnf("Skipping invalid or non-existent directory: %s", dir)
-		}
-	}
-	return validDirs
 }
