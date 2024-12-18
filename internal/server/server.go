@@ -16,24 +16,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Глобальная карта для хранения WebSocket-клиентов
 var (
-	clients   = make(map[*websocket.Conn]bool) // Хранилище клиентов
-	clientsMu sync.Mutex                       // Мьютекс для синхронизации доступа
+	clients   = make(map[*websocket.Conn]bool)
+	clientsMu sync.Mutex
 )
 
-// New инициализирует сервер
 func New(cfg *config.Config, eventsChan <-chan monitor.EventMessage) *http.Server {
 	e := echo.New()
 
-	// Статические файлы
 	fileServer := http.FileServer(http.FS(web.Files))
 	e.GET("/public/*", echo.WrapHandler(http.StripPrefix("/public/", fileServer)))
 
-	// Главная страница
 	e.GET("/", HomeHandler)
 
-	// WebSocket маршрут
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	e.GET("/ws", func(c echo.Context) error {
 		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
@@ -43,13 +38,11 @@ func New(cfg *config.Config, eventsChan <-chan monitor.EventMessage) *http.Serve
 		}
 		defer conn.Close()
 
-		// Добавляем клиента
 		clientsMu.Lock()
 		clients[conn] = true
 		clientsMu.Unlock()
 		log.Info("New WebSocket client connected")
 
-		// Удаляем клиента при разрыве соединения
 		defer func() {
 			clientsMu.Lock()
 			delete(clients, conn)
@@ -57,7 +50,6 @@ func New(cfg *config.Config, eventsChan <-chan monitor.EventMessage) *http.Serve
 			log.Info("WebSocket client disconnected")
 		}()
 
-		// Держим соединение активным
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				break
@@ -66,7 +58,6 @@ func New(cfg *config.Config, eventsChan <-chan monitor.EventMessage) *http.Serve
 		return nil
 	})
 
-	// Горутина для отправки событий клиентам
 	go RunWebSocketServer(eventsChan)
 
 	return &http.Server{
